@@ -18,6 +18,7 @@ import {
   PolarRadiusAxis,
   Radar,
 } from "recharts";
+import toast, { Toaster } from "react-hot-toast";
 
 const AdminDashboard = () => {
   const [feedbacks, setFeedbacks] = useState([]);
@@ -139,29 +140,83 @@ const AdminDashboard = () => {
   };
 
   const handleResponseSubmit = async () => {
-    if (!selectedFeedback || !response) return;
+    if (!selectedFeedback || !response) {
+      alert("Please enter a response");
+      return;
+    }
 
     try {
       const res = await fetch(`/api/feedback/${selectedFeedback._id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          // Add Accept header to explicitly request JSON response
+          Accept: "application/json",
         },
-        body: JSON.stringify({ response }),
+        body: JSON.stringify({
+          response: response,
+          feedbackId: selectedFeedback._id, // Add ID in body as well
+        }),
       });
 
-      if (!res.ok) {
-        throw new Error("Failed to submit response");
+      console.log("Response status:", res.status);
+      console.log(
+        "Response headers:",
+        Object.fromEntries(res.headers.entries())
+      );
+
+      // Get the raw text first
+      const rawText = await res.text();
+      console.log("Raw response:", rawText);
+
+      let data;
+      try {
+        // Only try to parse if we have content
+        if (rawText) {
+          data = JSON.parse(rawText);
+        }
+      } catch (parseError) {
+        console.error("JSON Parse Error:", parseError);
+        console.log("Failed to parse response:", rawText);
+        throw new Error(
+          `Server response invalid: ${rawText.substring(0, 100)}...`
+        );
       }
 
-      fetchFeedbacks();
-      setResponse("");
-      setSelectedFeedback(null);
+      // Check both the response status and the parsed data
+      if (!res.ok || !data) {
+        console.error("Response not OK or no data:", {
+          status: res.status,
+          data,
+        });
+        throw new Error(data?.error || `Server error: ${res.status}`);
+      }
+
+      console.log("Success! Updated feedback:", data);
+
+      // If we get here, the update was successful
+      await fetchFeedbacks(); // Refresh the feedback list
+      setResponse(""); // Clear the response input
+      setSelectedFeedback(null); // Close the modal
+
+      // Show success message
+      toast.success("Response submitted successfully!", {
+        duration: 4000,
+        position: "top-center",
+        style: {
+          background: "#4CAF50",
+          color: "#fff",
+        },
+      });
     } catch (err) {
-      alert("Failed to submit response: " + err.message);
+      console.error("Full error object:", err);
+      alert(
+        `Error: ${
+          err.message || "Failed to submit response. Please try again."
+        }`
+      );
     }
   };
-
   const handleExportData = () => {
     const csvContent = convertToCSV(feedbacks);
     const blob = new Blob([csvContent], { type: "text/csv" });
@@ -219,7 +274,7 @@ const AdminDashboard = () => {
   const trendData = processTrendData(feedbacks);
   const distributionData = processDistributionData(feedbacks);
   const overallAverages = processOverallAverages(feedbacks);
-  const COLORS = ["#6366f1", "#8b5cf6", "#ec4899"];
+  const COLORS = ["#ec4899", "#8b5cf6", "#FFA500"];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 p-6">
@@ -233,45 +288,6 @@ const AdminDashboard = () => {
 
         {/* Analytics Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Trend Analysis */}
-          {/* <div className="md:col-span-2 bg-white bg-opacity-90 backdrop-blur-lg rounded-lg shadow-lg border border-purple-100 p-6">
-            <h2 className="text-xl font-semibold mb-4 text-purple-700">
-              Feedback Trends Over Time
-            </h2>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={trendData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                  <XAxis dataKey="month" stroke="#666" />
-                  <YAxis domain={[0, 5]} stroke="#666" />
-                  <Tooltip />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="courseContent"
-                    stroke={COLORS[0]}
-                    strokeWidth={2}
-                    name="Course Content"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="teachingMethods"
-                    stroke={COLORS[1]}
-                    strokeWidth={2}
-                    name="Teaching Methods"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="campusFacilities"
-                    stroke={COLORS[2]}
-                    strokeWidth={2}
-                    name="Campus Facilities"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div> */}
-
           {/* Rating Distribution */}
           <div className="bg-white bg-opacity-90 backdrop-blur-lg rounded-lg shadow-lg border border-purple-100 p-6">
             <h2 className="text-xl font-semibold mb-4 text-purple-700">
@@ -304,7 +320,6 @@ const AdminDashboard = () => {
               </ResponsiveContainer>
             </div>
           </div>
-
           {/* Overall Performance */}
           <div className="bg-white bg-opacity-90 backdrop-blur-lg rounded-lg shadow-lg border border-purple-100 p-6">
             <h2 className="text-xl font-semibold mb-4 text-purple-700">
@@ -365,9 +380,7 @@ const AdminDashboard = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-indigo-600 uppercase tracking-wider">
                   Comments
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-indigo-600 uppercase tracking-wider">
-                  Status
-                </th>
+
                 <th className="px-6 py-3 text-left text-xs font-medium text-indigo-600 uppercase tracking-wider">
                   Actions
                 </th>
@@ -385,7 +398,7 @@ const AdminDashboard = () => {
                   <td className="px-6 py-4 text-purple-700">
                     {feedback.isAnonymous
                       ? "Anonymous"
-                      : feedback.studentId?.name || "N/A"}
+                      : feedback.studentId?.name || "College Student"}
                   </td>
                   <td className="px-6 py-4">
                     <div className="space-y-1">
@@ -400,7 +413,7 @@ const AdminDashboard = () => {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-purple-700">
+                  <td className="px-6 py-2 text-purple-700">
                     {feedback.comments}
                   </td>
 

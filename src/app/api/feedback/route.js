@@ -76,61 +76,62 @@ export async function GET(req) {
 }
 
 // app/api/feedback/[id]/route.js
-export async function PUT(req, { params }) {
-  try {
-    await connectDB();
-    const { id } = params;
+// export async function PUT(request, { params }) {
+//   console.log("API Route - PUT request received", params);
 
-    // Validate if the ID is a valid MongoDB ObjectId
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      console.log("❌ Invalid feedback ID format");
-      return NextResponse.json(
-        { error: "Invalid feedback ID format" },
-        { status: 400 }
-      );
-    }
+//   try {
+//     await connectDB();
+//     const { id } = params;
 
-    console.log(`🔄 Updating feedback: ${id}`);
-    const data = await req.json();
+//     console.log("Processing update for feedback ID:", id);
 
-    // Add validation for required fields
-    if (!data.response) {
-      return NextResponse.json(
-        { error: "Response is required" },
-        { status: 400 }
-      );
-    }
+//     if (!mongoose.Types.ObjectId.isValid(id)) {
+//       console.log("Invalid ID format:", id);
+//       return NextResponse.json(
+//         { error: "Invalid feedback ID format" },
+//         { status: 400 }
+//       );
+//     }
 
-    const feedback = await Feedback.findByIdAndUpdate(
-      id,
-      {
-        $set: {
-          response: data.response,
-          status: "responded",
-          updatedAt: new Date(),
-        },
-      },
-      {
-        new: true, // Return updated document
-        runValidators: true, // Run schema validators
-      }
-    );
+//     const body = await request.json();
+//     console.log("Request body:", body);
 
-    if (!feedback) {
-      console.log("❌ Feedback not found");
-      return NextResponse.json(
-        { error: "Feedback not found" },
-        { status: 404 }
-      );
-    }
+//     if (!body.response) {
+//       console.log("Missing response in request body");
+//       return NextResponse.json(
+//         { error: "Response is required" },
+//         { status: 400 }
+//       );
+//     }
 
-    console.log("✅ Feedback updated successfully");
-    return NextResponse.json(feedback);
-  } catch (error) {
-    console.error("❌ Error updating feedback:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to update feedback" },
-      { status: 500 }
-    );
-  }
-}
+//     const feedback = await Feedback.findByIdAndUpdate(
+//       id,
+//       {
+//         response: body.response,
+//         status: "responded",
+//         updatedAt: new Date(),
+//       },
+//       {
+//         new: true,
+//         runValidators: true,
+//       }
+//     );
+
+//     if (!feedback) {
+//       console.log("Feedback not found for ID:", id);
+//       return NextResponse.json(
+//         { error: "Feedback not found" },
+//         { status: 404 }
+//       );
+//     }
+
+//     console.log("Feedback updated successfully:", feedback);
+//     return NextResponse.json(feedback);
+//   } catch (error) {
+//     console.error("Server error:", error);
+//     return NextResponse.json(
+//       { error: error.message || "Failed to update feedback" },
+//       { status: 500 }
+//     );
+//   }
+// }
